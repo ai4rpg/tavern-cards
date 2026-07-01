@@ -141,7 +141,7 @@
 
 ### pack
 
-将 state.json 打包为 SillyTavern 格式，含文件存在性验证和格式转换。
+将 state.json 打包为 SillyTavern 格式，含文件存在性验证、编码检测、MVU 校验和格式转换。
 
 ```
 node scripts/tavern-cards-forge.mjs pack <project> [--state <path>] [--output <path>]
@@ -149,11 +149,14 @@ node scripts/tavern-cards-forge.mjs pack <project> [--state <path>] [--output <p
 
 输出路径优先级：`--output` > 项目 `artifact` > state 同目录下 `{name}.{json|png}`。
 
-验证以下文件是否存在后再打包：
-- `entryManifest.{type}.{name}.path` / `.contents[].file`
-- `regex_scripts[].replace_file`
-- `extensions.tavern_helper.scripts[].script_file`
-- `avatar`、`first_messages[]`
+执行顺序：
+1. 验证以下文件是否存在：
+   - `entryManifest.{type}.{name}.path` / `.contents[].file`
+   - `regex_scripts[].replace_file`
+   - `extensions.tavern_helper.scripts[].script_file`
+   - `avatar`、`first_messages[]`
+2. **编码检测**：读取每个内容文件时自动检测编码，非 UTF-8 文件报错退出
+3. **MVU 验证**（`state.mvu === true` 时）：验证已启用的脚本中引用了 `MagicalAstrogy/MagVarUpdate` 且存在 `[InitVar]` 条目，不满足则报错退出
 
 ```bash
 node scripts/tavern-cards-forge.mjs pack {project}
