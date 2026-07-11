@@ -56,32 +56,7 @@
 ## MVU 变量确认
 
 - 默认开场白（`开场白/0.txt`）对应默认 `世界书/变量/initvar.yaml`
-- 额外开场白需不同初始变量时，在末尾嵌入 `<UpdateVariable><initvar>` 块（完全覆盖默认 initvar，非合并）
-- `initvar_override` 的创建与校验见 `references/mvu/initvar.md`
-
-### 嵌入额外开场白
-
-在额外开场白末尾嵌入 `<UpdateVariable><initvar>` 块，使该开场白加载时覆盖默认 initvar：
-
-```text
-<UpdateVariable>
-<initvar>
-{initvar 内容}
-</initvar>
-</UpdateVariable>
-```
-
-该块完全覆盖默认 initvar（非合并），只有需要不同初始变量的额外开场白才需嵌入。
-
-### 嵌入脚本
-
-```bash
-INITVAR="cards/{Project}/开场白/initvar/1.yaml"; GREETING="cards/{Project}/开场白/1.txt"; PROJECT="{project}"; \
-node scripts/tavern-cards-forge.mjs validate-mvu "$PROJECT" --initvar "$INITVAR" && \
-( sed '/<UpdateVariable>/,/<\/UpdateVariable>/d' "$GREETING"; \
-  echo ""; echo "<UpdateVariable>"; echo "<initvar>"; cat "$INITVAR"; echo "</initvar>"; echo "</UpdateVariable>" \
-) > "$GREETING.tmp" && mv "$GREETING.tmp" "$GREETING"
-```
+- 额外开场白需不同初始变量时，使用 `initvar_override`：创建 `开场白/initvar/{index}.yaml`、注册到 state、pack 自动嵌入 `<UpdateVariable><initvar>` 块——完整流程见 `references/mvu/initvar.md#initvar_override`
 
 ## 注册
 
@@ -97,16 +72,14 @@ node scripts/tavern-cards-forge.mjs patch {project} '[{"op": "add", "path": "/fi
 叙事式：
 - [ ] 每一项已调用 first-message-agent
 - [ ] 子代理已交付自查摘要，正文已写入 output_path
-- [ ] 已调用 check-agent 检查
 - [ ] MVU 项目：叙述状态与对应 initvar 一致
-- [ ] 有 `initvar_override` 的项已完成校验和嵌入
 
 大纲式：
-- [ ] 每一项已由主代理整理，未编造内容
+- [ ] 只根据用户提供的信息整理，未编造内容
 - [ ] 结构清晰，要素完整
-- [ ] 已调用 check-agent 检查
-- [ ] 已保存并注册到 `first_messages`
 
 通用：
+- [ ] 已调用 check-agent 检查
+- [ ] 注册到 `first_messages`
 - [ ] state 中 `first_messages` 顺序与创作规划一致
-- [ ] 额外开场白：需要不同变量时已嵌入 `<UpdateVariable><initvar>` 块
+- [ ] 有 `initvar_override` 的开场白：已按 `references/mvu/initvar.md#initvar_override` 处理

@@ -70,6 +70,19 @@
       如果输出帮助信息，说明 CLI 工具可正常调用
 6. 正式使用 skill 时，建议开一个新会话，避免上下文干扰
 
+## 已有项目迁移
+
+如果你有基于旧版 skill（commit 5204425 以及之前版本）创建的项目，需要更新 state 以适配新版 forge：
+
+1. **重新解包**（推荐）：用新版 forge 对原有 PNG/JSON 重新 `unpack`（详见 `references/manual.md#unpack`），forge 会自动填充 `state.zod` 并移除 `tavern_helper.scripts` 中的 Zod 脚本条目
+2. **手动迁移**：如果不想重新解包，需要：
+   - 为 MVU 项目添加 `state.zod` 描述符（见 `tavern-cards/references/mvu/guide.md`）
+   - 删除 entryManifest 中所有条目的 `uid` 字段
+   - 删除已移除的 `extra` 字段（如有）
+   - 删除项目目录中的 `脚本/Zod.txt`（pack 不再读取它）
+
+> **注意**：SillyTavern 宏 `{{user}}` 会破坏 YAML 解析。包含 `{{user}}` 的条目内容在 unpack 时无法保存为 `.yaml`，会回退为 `.txt`。
+
 当你提到"角色卡"、"世界书"、"SillyTavern"等关键词时，skill 会自动触发
 
 ## 许可

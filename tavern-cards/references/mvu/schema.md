@@ -16,6 +16,14 @@
   - EJS 条件需要精确字符串匹配来触发显隐/段落控制（如 `phase === 'explore'`）
   - 其他情况一律使用 `z.string()` 让 AI 自由发挥
 
+## 加载与 import 约束
+
+`schema.ts` 由 forge 通过 jiti 在 Node 侧加载，运行时已注入全局 `z`（Zod v4）与 `_`（lodash）。**禁止任何 `import` 语句**。
+
+- pack 与 validate-mvu 会做预检（`checkSchemaTsContent`），命中即报错退出并列出违法语句
+- 报错原文含「do NOT run `npm install`」「Cannot find module 'zod'」——遇到直接删除对应 import，**不要给项目 `npm install zod`/`lodash`**
+- Zod 脚本由 pack 从 schema.ts 自动生成（通过 state.zod 驱动），CDN URL import（`import { registerMvuSchema } from 'https://...'`）自动追加，无需手写
+
 ## 前置
 - 变量结构已在需求对齐阶段确定并写入 `创作规划.yaml` 的 `mvu` 段落（见 `references/requirements.md`），直接使用其中的变量结构编写 schema.ts。`mvu.variables` 中的 `check` 字段是特殊更新要求的提示，编写变量更新规则时使用。
 - 如果规划文档的 `mvu` 信息不足以编写 schema.ts，询问用户补充。
@@ -35,7 +43,7 @@ export type Schema = z.output<typeof Schema>;
 ## 自查清单
 
 - [ ] 导出了 `Schema` 和 `Schema` 类型
-- [ ] 没有导入 zod 或 lodash（已全局可用）
+- [ ] 顶部没有任何 `import` 语句
 - [ ] 没有使用 `.strict()` / `.passthrough()`（Zod 4 不存在）
 - [ ] 没有滥用 `.optional()`（根字段不用）
 - [ ] 使用 `z.coerce.number()` 而非 `z.number()`

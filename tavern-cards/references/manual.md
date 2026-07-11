@@ -121,10 +121,15 @@
         "keywords": ["Alice"],
         "enabled": true,
         "strategy": { "type": "selective", "keys": ["Alice"] },
-        "position": { "type": "after_character_definition", "order": 10 },
-        "uid": 0
+        "position": { "type": "after_character_definition", "order": 10 }
       }
     }
+  },
+  "zod": {  // 仅 MVU 项目
+    "scriptName": "Zod",
+    "scriptId": "5b3b09af-35e3-4149-a0f7-2f08776ed6a1",
+    "schemaPath": "schema.ts",
+    "importUrl": "https://testingcf.jsdelivr.net/gh/StageDog/tavern_resource/dist/util/mvu_zod.js"
   }
 }
 ```
@@ -137,7 +142,7 @@
 
 | 选项 | 适用命令 | 说明 |
 |------|---------|------|
-| `--state <path>` | pack, configure, init, validate-mvu, query, patch | 直接指定 state.json 路径，跳过项目查找 |
+| `--state <path>` | pack, configure, init, validate-mvu, query, patch, unpack | 直接指定 state.json 路径，跳过项目查找 |
 
 ### pack
 
@@ -155,8 +160,20 @@ node scripts/tavern-cards-forge.mjs pack <project> [--state <path>] [--output <p
    - `regex_scripts[].replace_file`
    - `extensions.tavern_helper.scripts[].script_file`
    - `avatar`、`first_messages[]`
-2. **编码检测**：读取每个内容文件时自动检测编码，非 UTF-8 文件报错退出
-3. **MVU 验证**（`state.mvu === true` 时）：验证已启用的脚本中引用了 `MagicalAstrogy/MagVarUpdate` 且存在 `[InitVar]` 条目，不满足则报错退出
+   - `initvar_overrides` 中所有值
+2. **编码检测**：读取每个内容文件时自动检测编码（内建于 `readFileText`，贯穿校验与构建阶段），非 UTF-8 文件报错退出
+3. **MVU 校验阶段**（`state.mvu === true` 时依次执行，全部通过才继续）：
+   - **MVU 特征检测**：验证启用的脚本中引用了 `MagicalAstrogy/MagVarUpdate` 且存在 `[InitVar]` 条目
+   - **schema.ts 预检**（`state.zod` 存在时，路径通过 `state.zod.schemaPath` 定位）：拦截所有 `import` 语句
+   - **Zod 脚本内容校验**（`state.zod` 存在时执行）：仅检测 `export type`
+   - **[InitVar] 条目禁用校验**：所有 `[InitVar]` 条目必须显式设置 `enabled: false`
+   - **initvar 一致性校验**（`state.zod` 存在时）：用 Zod Schema 校验 `[InitVar]` 条目 YAML 及 `initvar_overrides` 中所有文件
+   - `state.zod` 缺失时输出警告，跳过 Zod 相关校验
+4. **构建阶段**（仅 `form=charactercard`）：
+   - 文件解析：加载 `path`/`contents`、`replace_file`、`script_file` 指向的文件内容
+   - **Zod 脚本生成**：由 `state.zod` 驱动，从 `schemaPath` 重建；Zod 脚本内容直接注入产出物
+   - **initvar_override 嵌入**：若 `state.initvar_overrides` 存在，对应开场白末尾的 `<UpdateVariable><initvar>` 块更新为 override YAML 内容
+5. 输出格式选择与写出
 
 ```bash
 node scripts/tavern-cards-forge.mjs pack {project}
@@ -170,23 +187,57 @@ node scripts/tavern-cards-forge.mjs pack adhoc --state ./state.json --output ./d
 将 SillyTavern PNG/JSON 还原为 state.json + 内容文件。
 
 ```
-node scripts/tavern-cards-forge.mjs unpack <project> [--file <path>] [--output <dir>] [--raw] [--split]
+node scripts/tavern-cards-forge.mjs unpack <project> [--file <path>] [--output <dir>] [--state <path>] [--json] [--fresh]
 ```
 
-- `--raw`：输出原始 SillyTavern JSON（不转换为项目格式）
-- `--split`：拆分长内容为独立文件
-- 内容保存：YAML 结构 → `世界书/{name}.yaml`，否则 `.txt`；`replaceString` → `正则/{scriptName}.txt`；脚本 content → `脚本/{name}.txt`；first_messages → `开场白/0.txt`（[1:] 为 alternate_greetings）
+- `--json`：从 PNG 中提取角色卡 JSON 对象（仅支持 PNG 输入；对 JSON 输入使用 `--json` 会报错）。输出为完整的 `chara_card_v2` JSON 对象，保存到 `--output` 目录
+- `--fresh`：跳过与已有 state.json 合并，作为全新解包覆盖输出；与 `--state` 互斥
+- `--state <path>`：指定已有 state.json 路径用于合并模式；`--output` 未指定时从其所在目录推导
+- 内容保存：YAML 结构 → `世界书/{name}.yaml`，否则 `.txt`；`replaceString` → `正则/{scriptName}.txt`；脚本 content → `脚本/{name}.txt`
+- **文件名冲突防护**：写出条目文件时，如目标路径已被占用，自动添加 `_1`/`_2` 等数字后缀避免冲突。这在 merge 模式下尤其重要（已有文件可能与新条目同名）
+- **启用的 Zod 脚本**：从 `tavern_helper.scripts` 中检测到 MVU Zod 脚本后，提取元数据到 `state.zod`，写出 `schema.ts`，并从 scripts 中移除该 Zod 脚本条目（不再写出为 `脚本/{name}.txt`）。压缩/编译脚本仅记录警告，提示手动编写 `schema.ts`
+- first_messages → `开场白/{index}.txt`（[0] 为 first_mes，[1:] 为 alternate_greetings）
+- **`mvu === true` 时**：对所有开场白检测并提取 `<UpdateVariable><initvar>` 块为 `开场白/initvar/{index}.yaml`，同时填充 `initvar_overrides`
+
+**unpack 详细行为：**
+
+1. 读取输入 PNG/JSON 文件
+2. 自动识别格式类型（PNG→角色卡；JSON→检测扁平世界书 / 角色卡标准格式）
+3. 提取所有条目，转换为扁平的 EntryManifestLeaf 结构
+4. **MVU 自动检测**（`detectMvu`，characterMeta 合并后）：满足条件时 `mvu: true`
+5. 每个条目的 content 处理：YAML 对象→`世界书/{name}.yaml`，否则 `.txt`
+6. `regex_scripts` 中每个 `replaceString` 写入 `正则/{name}.txt`，设置 `replace_file`
+7. `tavern_helper.scripts` 中每个 `content` 写入 `脚本/{name}.txt`，设置 `script_file`
+   - **启用的 Zod 脚本**：将元数据提取到 `state.zod`（scriptId/importUrl 取原值，schemaPath 写入提取路径），写出 `schema.ts`，并从 scripts 中移除该 Zod 脚本条目（不再写出为 `脚本/{name}.txt`）
+   - `button`/`info`/`data` 三个可选字段：如果值等于 ST 默认值（空串、`{enabled:true,buttons:[]}`、`{}`）则不写入 `state.zod`，保持 state 极简；pack 时自动回填默认值
+   - 多个启用时警告「运行时不确定，建议禁用多余」并取第一个
+   - 压缩/编译脚本（含 sourceMappingURL / import 别名 / 超长单行）跳过提取，提示手动编写 `schema.ts`
+8. `first_messages` 写入 `开场白/{index}.txt`
+   - `mvu === true` 时，对所有开场白检测 `<UpdateVariable><initvar>` 块，写出为 `开场白/initvar/{index}.yaml`，填充 `initvar_overrides` 映射
+9. 生成 `tavern-cards-state.json`
+
+**merge 模式**（默认行为）：当存在已有 state.json 时，将新解包数据与已有 state 合并：
+- 两轮匹配：第一轮按条目名 (comment) 匹配；第二轮按归一化内容匹配（检测重命名）
+- 旧条目未匹配时，文件保留在原位不删除，末尾汇总输出未匹配文件路径
+- `state.zod` 合并策略：角色卡侧有 Zod 脚本 → `scriptId`/`importUrl` 取新值（角色卡侧优先）；已有 state 的 `schemaPath` 保留（用户可能自定义路径）；角色卡侧无 Zod 脚本但已有 `state.zod` → 保留旧描述符（输出警告）
+- `--fresh` 为全新解包（旧版默认行为）；`--state` 与 `--fresh` 互斥
+
+> **独立世界书路径提前 return**：步骤 2 检测到扁平格式世界书时会跳过步骤 4-8 的 MVU/脚本/开场白处理。扁平世界书永非 MVU，`mvu` 保持默认 `false`，无 `initvar_overrides`、无 `schema.ts` 提取。
+
+> **磁盘残留文件**：如 `tavern_helper.scripts` 中已存在同名脚本且 `state.zod` 也存在，pack 时输出警告并覆盖，建议重新 unpack 清理冗余脚本条目。磁盘上如有旧的 `脚本/{name}.txt` 残留文件，unpack 输出提示可手动删除。
 
 ```bash
 node scripts/tavern-cards-forge.mjs unpack {project}
-node scripts/tavern-cards-forge.mjs unpack {project} --raw
-# 未注册项目须同时提供 --file 和 --output
-node scripts/tavern-cards-forge.mjs unpack adhoc --file ./input.png --output ./project
+node scripts/tavern-cards-forge.mjs unpack {project} --fresh
+node scripts/tavern-cards-forge.mjs unpack {project} --json
+# 未注册项目须同时提供 --file 和 --state 或 --output（全新解包）
+node scripts/tavern-cards-forge.mjs unpack adhoc --file cards/{Project}/{Project}.png --state cards/{Project}/tavern-cards-state.json
+node scripts/tavern-cards-forge.mjs unpack adhoc --file cards/{Project}/{Project}.png --output cards/{Project} --fresh
 ```
 
 ### configure
 
-推导并填充条目的运行时字段（strategy、position、uid）。仅基于 state.json，不读取 `.cardrc.json`。
+推导并填充条目的运行时字段（strategy、position）。仅基于 state.json，不读取 `.cardrc.json`。
 
 ```
 node scripts/tavern-cards-forge.mjs configure <project> [--state <path>] [--force]
@@ -241,7 +292,7 @@ node scripts/tavern-cards-forge.mjs init {project}
 node scripts/tavern-cards-forge.mjs validate-mvu <project> [--state <path>] [--initvar <path>]
 ```
 
-前置条件：`mvu: true`、项目根目录有 `schema.ts`（导出 Zod Schema）、待校验的 initvar YAML 文件已编写。用 jiti 加载 `schema.ts`，注入全局 `z`（Zod v4）和 `_`（lodash）。项目自己的 `schema.ts` 应使用全局 `z` / `_`，不依赖本地 `node_modules`。
+前置条件：`mvu: true`、`state.zod` 存在（含 `schemaPath` 指向 `schema.ts`）、待校验的 initvar YAML 文件已编写。schema.ts 路径通过 `state.zod.schemaPath` 定位。缺失时报错提示运行 `unpack` 自动填充。用 jiti 加载 `schema.ts`，注入全局 `z`（Zod v4）和 `_`（lodash）。项目自己的 `schema.ts` 应使用全局 `z` / `_`，不依赖本地 `node_modules`。
 
 ```bash
 # 校验默认 initvar
@@ -287,12 +338,14 @@ node scripts/tavern-cards-forge.mjs patch <project> [patch] [--file <path>] [--s
 |---------|------|
 | `/entryManifest/{type}/{name}/path` | 条目内容文件 |
 | `/entryManifest/{type}/{name}/contents/{i}/file` | 内容片段文件 |
-| `/regex_scripts/{i}/replace_file` | 正则替换文件 |
-| `/extensions/tavern_helper/scripts/{i}/script_file` | 脚本文件 |
+| `/regex_scripts/{name}/replace_file` | 正则替换文件 |
+| `/extensions/tavern_helper/scripts/{name}/script_file` | 脚本文件 |
+| `/zod/schemaPath` | Zod schema 文件路径 |
 | `/avatar` | 头像 PNG |
 | `/first_messages/{i}` | 开场白文件 |
+| `/initvar_overrides/{key}` | initvar_override YAML 文件 |
 
-**不要提前手动重命名文件**，让 patch 的 precheck 处理。`move` 操作重命名条目时会输出提醒（文件路径不变需手动更新）。
+**不要提前手动重命名文件**，让 patch 的 precheck 处理。`move` 操作重命名条目时只改 entryManifest 的 key，**不会**自动改 leaf 的 `path`/`contents[].file` 字段，也不会动磁盘文件；会输出提醒。若要保持名实一致，再用 `replace` 操作改 `path` 字段（patch 会自动重命名磁盘文件，不要手动 `mv`）。
 
 ```bash
 node scripts/tavern-cards-forge.mjs patch {project} --file ./patches/update.json
@@ -322,7 +375,6 @@ echo '[{"op":"remove","path":"/entryManifest/region/废弃地点"}]' | node scri
 | `part` | string? | 同类型内的子分类 |
 | `rephrase` | boolean? | 重述/澄清条目 |
 | `keywords` | string[] | 🟢 关键词候选 |
-| `uid` | number? | 唯一标识符（configure 分配） |
 | `enabled` | boolean? | 是否启用 |
 | `strategy` | object? | `{ type: "constant"\|"selective"\|"vectorized"\|"constant_selective", keys?: string[], keys_secondary?: { logic: SelectiveLogic, keys: string[] }, scan_depth?: number\|"same_as_global" }` |
 | `position` | object? | `{ type: PositionType, role?: "system"\|"user"\|"assistant", depth?: number, order: number }` |
@@ -331,11 +383,30 @@ echo '[{"op":"remove","path":"/entryManifest/region/废弃地点"}]' | node scri
 | `recursion` | object? | `{ prevent_incoming?: bool, prevent_outgoing?: bool, delay_until?: number }`（空时省略） |
 | `effect` | object? | `{ sticky?: number, cooldown?: number, delay?: number }`（空时省略） |
 | `group` | object? | `{ labels: string[], use_priority: bool, weight: number, use_scoring?: bool\|null }` |
-| `extra` | object? | 额外字段 |
 
 **PositionType**：`before_character_definition`(0)、`after_character_definition`(1)、`before_author_note`(2)、`after_author_note`(3)、`at_depth`(4)、`before_example_messages`(5)、`after_example_messages`(6)
 
 **SelectiveLogic**：`and_any`(0)、`not_all`(1)、`not_any`(2)、`and_all`(3)
+
+### ZodDescriptor
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `scriptName` | string | ✓ | 脚本名，重建到 `tavern_helper.scripts` 时的 key |
+| `scriptId` | string | ✓ | 来自角色卡的脚本 id；pack 时原样回写以保持跨 pack 稳定 |
+| `schemaPath` | string | ✓ | schema.ts 相对项目根目录的路径 |
+| `importUrl` | string | ✓ | `registerMvuSchema` 的 CDN import URL |
+| `button` | object? | | 脚本按钮配置（非 ST 默认值时保留） |
+| `info` | string? | | 脚本信息（非 ST 默认值时保留） |
+| `data` | object? | | 脚本附加数据（非 ST 默认值时保留） |
+
+> `button`/`info`/`data` 三字段：unpack 时自动剥离等于 ST 默认值的条目（保持 state 极简），pack 时自动回填 ST 默认值（保证产出物与 ST 原生导出一致）。用户通常无需手动编辑这三个字段。
+
+**TavernCardsState 新增字段**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `zod` | ZodDescriptor? | MVU Zod 脚本元数据；存在时隐含 `mvu=true`，pack 据此重建脚本内容 |
 
 ### RegexScript
 
@@ -413,17 +484,26 @@ echo '[{"op":"remove","path":"/entryManifest/region/废弃地点"}]' | node scri
       变量列表.txt
       变量更新规则.yaml
       变量输出格式.txt
-  开场白/ 0.txt [1.txt ...]      # 仅角色卡项目
+  开场白/
+    0.txt
+    1.txt
+    initvar/                     # 仅 MVU 项目，unpack 提取或手动创建
+      1.yaml                     # 与 开场白/{index}.txt 编号一致
   正则/  {name}.txt              # 仅角色卡项目
-  脚本/  {name}.txt              # 仅角色卡项目
+  脚本/  {name}.txt              # 仅角色卡项目（Zod 脚本由 state.zod 驱动重建）
 ```
+
+> unpack 提取 Zod 脚本元数据到 `state.zod`。
 
 ### state.json 差异
 
 | 字段 | 角色卡 PNG | 角色卡 JSON | 独立世界书 |
 |------|-----------|------------|-----------|
 | `form` | `"charactercard"` | `"charactercard"` | `"worldbook"` |
-| `avatar` | `"avatar.png"` | `""` | `null` |
+| `avatar` | `"avatar.png"` | `""` | 缺省 |
 | `first_messages` | `["开场白/0.txt", ...]` | 同上 | `[]` |
-| `extensions` | `{ tavern_helper: {...} }` | 同上 | `null` |
-| `regex_scripts` | `{ 脚本名: {...} }` | 同上 | `null` |
+| `extensions` | `{ tavern_helper: {...} }` | 同上 | 缺省 |
+| `initvar_overrides` | MVU 项目可选（`{ "开场白/1.txt": "开场白/initvar/1.yaml" }`）；无 override 时缺省 | 同左 | 缺省（worldbook 恒 mvu=false，superRefine 校验禁止此字段） |
+| `zod` | MVU 项目可选（ZodDescriptor，pack 据此重建 Zod 脚本） | 同左 | 缺省 |
+
+> `initvar_overrides` 仅 `state.mvu === true` 时可存在；`mvu === false` 时必须缺省（Zod superRefine 校验，pack 会拦）。

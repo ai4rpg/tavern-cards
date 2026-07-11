@@ -74,18 +74,12 @@
   },
   {
     "op": "add",
-    "path": "/extensions/tavern_helper/scripts/Zod",
+    "path": "/zod",
     "value": {
-      "type": "script",
-      "script_file": "脚本/Zod.txt",
-      "enabled": true,
-      "id": "5b3b09af-35e3-4149-a0f7-2f08776ed6a1",
-      "info": "",
-      "button": {
-        "enabled": true,
-        "buttons": []
-      },
-      "data": {}
+      "scriptName": "Zod",
+      "scriptId": "5b3b09af-35e3-4149-a0f7-2f08776ed6a1",
+      "schemaPath": "schema.ts",
+      "importUrl": "https://testingcf.jsdelivr.net/gh/StageDog/tavern_resource/dist/util/mvu_zod.js"
     }
   },
   {

@@ -20,10 +20,11 @@
 如果使用 MVU，还需要检查：
 
 - [ ] MVU 一致性检查通过
-- [ ] `validate-mvu` 校验通过
-- [ ] schema.ts 与 Zod.txt 同步（运行 `diff` 同步检查命令确认，见 `references/mvu/guide.md#同步检查命令`）
 - [ ] MVU 脚本已注册：`node scripts/tavern-cards-forge.mjs query {project} '$.extensions.tavern_helper.scripts.MVU'` 返回非空
-- [ ] MVU Zod 脚本已注册：同上，查询路径改为 `$.extensions.tavern_helper.scripts.Zod`
+- [ ] `state.zod` 已注册：
+  ```bash
+  node scripts/tavern-cards-forge.mjs query {project} '$.zod'
+  ```
 - [ ] MVU 相关正则已注册：查询 `$.regex_scripts.*~` 应包含 `对AI隐藏状态栏`、`状态栏界面`、`对AI隐藏变量更新`、`变量更新中美化`、`变量更新美化` 五条
 
 ## 后续维护

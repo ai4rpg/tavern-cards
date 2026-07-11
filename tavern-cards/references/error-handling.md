@@ -87,7 +87,7 @@
 3. 同步修改受影响的已完成条目，修改后按上方"用户反馈"流程处理
 4. 如涉及 MVU 结构变更，按 `references/mvu/guide.md#修改流程` 执行变更传播和校验。
    - 更新 EJS 预处理条目（如有 EJS 引用该变量）
-   - 运行同步检查命令校验 Zod.txt 与 schema.ts 一致
+   - 运行同步检查命令校验 initvar 与 schema.ts 一致
 
 ---
 
@@ -100,6 +100,15 @@ schema 校验不通过、路径冲突、JSON 格式错误等：
 1. 解读错误信息，定位具体问题（字段缺失、类型不匹配、路径已存在等）
 2. 修正后重新执行 patch
 3. 路径冲突时：检查是否为重复注册，确认后用 `replace` 操作覆盖或删除旧条目后重新 `add`
+
+> **null 值迁移**：`recursion.delay_until`、`effect.sticky/cooldown/delay`、`regex_scripts.minDepth/maxDepth` 已收紧为 `.optional()`（禁止 `null`，仅允许缺省）。若旧 state.json 报 `expected number, received null`，把对应字段的 `null` 删除即可（留空即可省略）。
+
+### MVU 校验失败
+
+> MVU 校验失败 forge 会详细列出违法语句。
+> 关键提示原文含「do NOT run `npm install`」「Cannot find module 'zod'」——遇到此类提示直接删除对应 import，**不要**给项目 `npm install zod`/`lodash`。
+
+`state.zod` 缺失时 validate-mvu 会报错，需确保 `mvu-patch.json` 已正确应用（包含 `/zod` 的 add 操作）。Zod 脚本内容校验现在通过 `state.zod` 驱动，schema.ts 路径由 `state.zod.schemaPath` 定位。
 
 ### 条目间一致性冲突
 

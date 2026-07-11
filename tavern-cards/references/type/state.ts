@@ -40,7 +40,6 @@ export const EntryManifestLeaf = z.object({
   abstract: z.string().describe('条目内容摘要'),
   contents: z.array(ContentFragment).optional()
     .describe('有序内容片段列表, 与 path 互斥'),
-  uid: z.number().optional().describe('条目唯一标识符, 未设置或重复时自动分配'),
   enabled: z.boolean().optional().describe('是否启用'),
   strategy: z.object({
     type: StrategyType,
@@ -62,12 +61,12 @@ export const EntryManifestLeaf = z.object({
   recursion: z.object({
     prevent_incoming: z.boolean().optional().describe('禁止其他条目递归激活本条目'),
     prevent_outgoing: z.boolean().optional().describe('禁止本条目递归激活其他条目'),
-    delay_until: z.number().min(1).nullable().optional().describe('延迟到第 n 级递归检查时才能激活本条目'),
+    delay_until: z.number().min(1).optional().describe('延迟到第 n 级递归检查时才能激活本条目'),
   }).partial().optional().describe('递归设置'),
   effect: z.object({
-    sticky: z.number().min(1).nullable().optional().describe('黏性: 激活后持续 n 条消息'),
-    cooldown: z.number().min(1).nullable().optional().describe('冷却: 激活后 n 条消息内不能再次激活'),
-    delay: z.number().min(1).nullable().optional().describe('延迟: 聊天至少有 n 楼消息时才能激活'),
+    sticky: z.number().min(1).optional().describe('黏性: 激活后持续 n 条消息'),
+    cooldown: z.number().min(1).optional().describe('冷却: 激活后 n 条消息内不能再次激活'),
+    delay: z.number().min(1).optional().describe('延迟: 聊天至少有 n 楼消息时才能激活'),
   }).partial().optional().describe('效果（黏性/冷却/延迟）'),
   group: z.object({
     labels: z.array(z.coerce.string()).min(1).describe('组标签'),
@@ -76,7 +75,6 @@ export const EntryManifestLeaf = z.object({
     use_scoring: z.union([z.boolean(), z.literal('same_as_global')]).default('same_as_global')
       .transform(data => data === 'same_as_global' ? null : data).describe('使用评分'),
   }).optional().describe('组设置'),
-  extra: z.record(z.string(), z.any()).optional().describe('额外字段'),
 }).superRefine((data, ctx) => mutuallyExclusive(['path', 'contents'])(data, ctx));
 
 export const EntryManifest = z.record(EntryType, z.record(z.string(), EntryManifestLeaf))
@@ -122,8 +120,8 @@ export const RegexScript = z.object({
   promptOnly: z.boolean().optional(),
   runOnEdit: z.boolean().optional(),
   substituteRegex: z.number().optional(),
-  minDepth: z.number().nullable().optional(),
-  maxDepth: z.number().nullable().optional(),
+  minDepth: z.number().optional(),
+  maxDepth: z.number().optional(),
 }).partial({ replaceString: true, replace_file: true })
   .superRefine((data, ctx) => mutuallyExclusive(['replaceString', 'replace_file'])(data, ctx));
 
@@ -148,6 +146,16 @@ export const TavernHelperScript = z.object({
 export const TavernHelper = z.object({
   scripts: z.record(z.string(), TavernHelperScript).optional().describe('脚本映射, key 为脚本名称'),
   variables: z.record(z.string(), z.any()).optional(),
+});
+
+const ZodDescriptor = z.object({
+  scriptName: z.string().describe('脚本名, 即重建到 tavern_helper.scripts 时的 key'),
+  scriptId: z.string().describe('来自角色卡的脚本 id; pack 时原样回写以保持跨 pack 稳定'),
+  schemaPath: z.string().describe('schema.ts 相对项目根目录的路径'),
+  importUrl: z.string().describe('registerMvuSchema 的 CDN import URL'),
+  button: TavernHelperScript.shape.button.unwrap().optional(),
+  info: z.string().optional(),
+  data: z.record(z.string(), z.any()).optional(),
 });
 
 export const Extensions = z.looseObject({
@@ -188,12 +196,30 @@ export const TavernCardsState = z.object({
   create_date: z.string().default('').describe('创建日期'),
   extensions: Extensions.optional().describe('扩展字段'),
   regex_scripts: z.record(z.string(), RegexScript).optional().describe('正则脚本映射, key 为脚本名称'),
+  initvar_overrides: z.record(z.string(), z.string()).optional()
+    .describe('开场白的 initvar_override 映射: key=开场白路径, value=override YAML 路径; 非MVU项目或无override时缺省'),
+  zod: ZodDescriptor.optional()
+    .describe('MVU Zod 脚本元数据; 存在时隐含 mvu=true, pack 据此重建脚本内容'),
 }).superRefine((data, ctx) => {
   if (data.form === 'worldbook' && data.mvu) {
     ctx.addIssue({
-      code: z.ZodIssueCode.custom,
+      code: 'custom',
       path: ['mvu'],
       message: 'worldbook 时 mvu 必须为 false',
+    });
+  }
+  if (!data.mvu && data.initvar_overrides !== undefined) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['initvar_overrides'],
+      message: 'mvu 为 false 时 initvar_overrides 必须缺省',
+    });
+  }
+  if (data.zod && !data.mvu) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['zod'],
+      message: 'state.zod 存在时 mvu 必须为 true',
     });
   }
 });
@@ -215,3 +241,4 @@ export type RegexScript = z.infer<typeof RegexScript>;
 export type TavernHelperScript = z.infer<typeof TavernHelperScript>;
 export type TavernHelper = z.infer<typeof TavernHelper>;
 export type Extensions = z.infer<typeof Extensions>;
+export type ZodDescriptor = z.infer<typeof ZodDescriptor>;

@@ -13,9 +13,9 @@
 ```
 schema.ts ──────► initvar.yaml（必须符合 Schema）
     │
-    ├──────────► 变量更新规则.yaml（type/range 需与 Schema 一致）
-    │
-    └──────────► 脚本/Zod.txt（内联 Schema，SillyTavern 运行时使用）
+    └──────────► 变量更新规则.yaml（type/range 需与 Schema 一致）
+
+schema.ts ──────► Zod 脚本（pack 时由 state.zod 驱动，从 schema.ts 自动生成并注入产出物）
 
 模板文件（变量列表.txt、变量输出格式.txt、正则等）：收尾时从 assets/mvu-templates/ 复制
 配置合并（entryManifest/mvu、脚本注册、正则注册等）：收尾时通过 JSON Patch 注入
@@ -62,16 +62,6 @@ MVU 条目名称使用前缀标记功能定位和双 AI 发送路由，详见 `r
 
 将 `assets/mvu-templates/` 整体复制到项目目录（路径一一对应，无需重命名）。复制后的项目模板默认视为固定资产；模板作用、允许修改的范围和例外流程见 `references/mvu/templates.md`（按需查阅）。
 
-然后将 `schema.ts` 的内容内联到 `脚本/Zod.txt`，替换 `// SCHEMA_CONTENT` 占位行：
-
-```bash
-sed -e '/\/\/ SCHEMA_CONTENT/{r schema.ts' -e 'd}' assets/mvu-templates/脚本/Zod.txt | sed '/^export type/d' > 脚本/Zod.txt
-```
-
-- 前半段（第一个 `sed`）：将 `// SCHEMA_CONTENT` 行替换为 schema.ts 的内容
-- 后半段（`| sed '/^export type/d'`）：移除 TypeScript 的 `export type` 行（SillyTavern 不支持）
-- 改用管道而非 `-i`，因为 GNU sed 的 `r` 命令输出不会经后续 `-e` 表达式处理
-
 ### 2. 应用 JSON Patch 合并配置
 
 **新项目**（`init` 创建，无 extensions/regex_scripts）：先应用 `assets/mvu-prereq-patch.json`，再应用 `assets/mvu-patch.json`。
@@ -97,11 +87,11 @@ node scripts/tavern-cards-forge.mjs patch {project} --file assets/mvu-patch.json
 # 校验默认 initvar
 node scripts/tavern-cards-forge.mjs validate-mvu {project}
 
-# 校验额外开场白的 initvar_override
+# 校验 initvar_override
 node scripts/tavern-cards-forge.mjs validate-mvu {project} --initvar cards/{Project}/开场白/initvar/1.yaml
 ```
 
-用 schema.ts 中的 Zod Schema 校验 initvar.yaml 内容，确保初始变量符合变量结构定义。额外开场白使用 `initvar_override` 时，通过 `--initvar` 选项指定具体文件路径。
+用 schema.ts 中的 Zod Schema 校验 initvar.yaml，确保初始变量符合变量结构定义。开场白使用 `initvar_override` 时，通过 `--initvar` 选项指定具体文件路径。
 
 ### 4. MVU 一致性检查
 
@@ -125,7 +115,7 @@ MVU 和 EJS 编写完成后，检查 MVU 变量系统与已编写世界书条目
 
 - initvar.yaml 的初始值是否与开场白的初始状态一致（如好感度、当前场景等）
 - initvar.yaml 是否通过了 validate-mvu 校验（运行 `node scripts/tavern-cards-forge.mjs validate-mvu {project}`）
-- 使用了 `initvar_override` 的额外开场白，初始值是否与 override 文件一致，并已按 `references/mvu/initvar.md` 校验和嵌入 `<UpdateVariable><initvar>` 块
+- 使用了 `initvar_override` 的开场白：`initvar_overrides` 是否已通过 patch 注册到 state（见 `references/mvu/initvar.md`）；初始值是否与 override 文件一致
 - YAML 层级结构是否与 schema.ts 定义一致
 - 无繁体字、日文汉字
 
@@ -157,38 +147,18 @@ MVU 和 EJS 编写完成后，检查 MVU 变量系统与已编写世界书条目
 
 修改 schema.ts 中的变量定义时，必须同步更新所有受影响文件：
 
-| 变更类型 | schema.ts | initvar¹ | 更新规则.yaml | Zod.txt | 创作规划.yaml | EJS预处理 | 世界书条目 |
-|---------|-----------|-------------|-------------|---------|--------------|----------|-----------|
-| 新增变量 | ✓ | 添加初始值 | 非自明则添加 | 需重新内联 | 按需更新 | 如有EJS则注册 | enum值需对应描述条目 |
-| 修改变量名 | ✓ | 同步改名 | 同步改名 | 需重新内联 | 同步改名 | 如有EJS则改名 | — |
-| 删除变量 | ✓ | 删除对应值 | 删除对应规则 | 需重新内联 | 删除对应段 | 如有EJS则删除 | — |
-| 修改类型 | ✓ | 需通过校验 | 同步 type | 需重新内联 | — | — | enum值需补充描述 |
-| 修改范围/格式 | ✓ | — | 同步 range/format | 需重新内联 | — | — | — |
-| 修改初始值 | — | 修改对应值 | — | — | — | — | — |
+| 变更类型 | schema.ts | initvar¹ | 更新规则.yaml | 创作规划.yaml | EJS预处理 | 世界书条目 |
+|---------|-----------|-------------|-------------|--------------|----------|-----------|
+| 新增变量 | ✓ | 添加初始值 | 非自明则添加 | 按需更新 | 如有EJS则注册 | enum值需对应描述条目 |
+| 修改变量名 | ✓ | 同步改名 | 同步改名 | 同步改名 | 如有EJS则改名 | — |
+| 删除变量 | ✓ | 删除对应值 | 删除对应规则 | 删除对应段 | 如有EJS则删除 | — |
+| 修改类型 | ✓ | 需通过校验 | 同步 type | — | — | enum值需补充描述 |
+| 修改范围/格式 | ✓ | — | 同步 range/format | — | — | — |
+| 修改初始值 | — | 修改对应值 | — | — | — | — |
 
 > ¹ `initvar` 包含默认 `initvar.yaml` 和所有额外开场白的 `initvar_override`（`开场白/initvar/{index}.yaml`）。新增/改名/删除/修改类型时，所有 initvar 文件均需同步；修改初始值时各 override 按需独立管理。
 
-> Zod.txt 需重新内联：修改 schema.ts 后，从资产模板重新生成 `脚本/Zod.txt`：
-> ```bash
-> sed -e '/\/\/ SCHEMA_CONTENT/{r schema.ts' -e 'd}' {skill_dir}/assets/mvu-templates/脚本/Zod.txt | sed '/^export type/d' > 脚本/Zod.txt
-> ```
->
-> `{skill_dir}` 为 tavern-cards skill 的安装路径，需替换为实际路径。
-
-### 同步检查命令
-
-内联完成后，可用以下命令检查 schema.ts 与 Zod.txt 是否同步：
-
-```bash
-if ! diff -u <(sed -e '/\/\/ SCHEMA_CONTENT/{r schema.ts' -e 'd}' {skill_dir}/assets/mvu-templates/脚本/Zod.txt | sed '/^export type/d') 脚本/Zod.txt; then
-  echo '✗ 未同步（见上方 diff）'
-  exit 1
-else
-  echo '✓ 同步'
-fi
-```
-
-原理：从干净模板重新注入当前的 schema.ts 得到期望内容，与实际 Zod.txt 逐行比较。无差异即同步。此命令在项目目录下执行。`{skill_dir}` 为 tavern-cards skill 的安装路径，需替换为实际路径。
+> Zod 脚本由 pack 从 schema.ts 自动生成（通过 state.zod 驱动）。
 
 ### 执行步骤
 
@@ -199,5 +169,4 @@ fi
 5. **补充世界书条目**（如有）：如果新增了 enum 值或取值范围，检查世界书中是否有对应条目描述其含义
 6. **校验**：
    - 运行 `node scripts/tavern-cards-forge.mjs validate-mvu {project}` 校验 initvar.yaml
-   - 运行上方同步检查命令校验 Zod.txt
    - 执行收尾步骤第 4 步的 MVU 一致性检查

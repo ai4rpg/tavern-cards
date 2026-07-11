@@ -65,8 +65,9 @@ node scripts/tavern-cards-forge.mjs query {project} '$.mvu'
 | schema.ts | 检查文件 | `schema.ts` 文件存在 |
 | initvar.yaml | `query {project} '$.entryManifest.MVU.*~'` | 有 part=initvar 条目且对应文件存在 |
 | 变量更新规则 | 同上 | 有 part=update_rules 条目且对应文件存在 |
+| state.zod | `query {project} '$.zod'` | `state.zod` 存在 |
 
-三项都存在 → MVU 完成。否则从第一个缺失项继续。
+四项都存在 → MVU 完成。否则从第一个缺失项继续。
 
 ## 判断 EJS 完成状态
 
