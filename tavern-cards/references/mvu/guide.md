@@ -91,7 +91,7 @@ node scripts/tavern-cards-forge.mjs validate-mvu {project}
 node scripts/tavern-cards-forge.mjs validate-mvu {project} --initvar cards/{Project}/开场白/initvar/1.yaml
 ```
 
-用 schema.ts 中的 Zod Schema 校验 initvar.yaml，确保初始变量符合变量结构定义。开场白使用 `initvar_override` 时，通过 `--initvar` 选项指定具体文件路径。
+用 schema.ts 中的 Zod Schema 校验 initvar.yaml，确保初始变量符合变量结构定义。开场白使用 `initvar_override` 时，通过 `--initvar` 选项指定具体文件路径。校验失败的处理见 `references/error-handling.md#MVU-校验失败`。
 
 ### 4. MVU 一致性检查
 
