@@ -14,7 +14,7 @@
 
 ### 1. 编辑占位文件
 
-直接清空 `正则/状态栏界面.html` 的原内容，写入自己的 HTML 即可。无需 `<script>` 标签，文件整体作为 `<StatusPlaceHolderImpl/>` 的替换字符串注入。
+`正则/状态栏界面.html` 以 3 个反引号行起止（代码块标记），这两行是文件内容的一部分、必须保留。保留首尾标记、清空中间内容后写入自己的 HTML 即可。无需 `<script>` 标签，文件整体作为 `<StatusPlaceHolderImpl/>` 的替换字符串注入。
 
 ### 2. 宏语法与路径
 
@@ -35,7 +35,8 @@
 
 把多个变量组织在同一容器内：
 
-```html
+````
+```
 <style>
 .stat-panel {
   display: flex; flex-wrap: wrap; gap: 8px;
@@ -56,10 +57,12 @@
 </div>
 </body>
 ```
+````
 
 多角色时为每个角色单独写一组条目：
 
-```html
+````
+```
 <style>
 .char-block {
   border-left: 3px solid #4a90d9; padding-left: 8px;
@@ -81,6 +84,7 @@
 </div>
 </body>
 ```
+````
 
 ### 4. 预览与迭代
 

@@ -138,15 +138,17 @@ pnpm watch
 
 #### 配置实时预览
 
-将项目中的 `正则/状态栏界面.html` 临时改为加载本地服务器：
+将项目中的 `正则/状态栏界面.html` 临时改为加载本地服务器。该文件以 3 个反引号行起止（代码块标记），修改时需保留：
 
-```html
+````
+```
 <body>
 <script>
 $('body').load('http://localhost:5500/dist/{ProjectName}/界面/状态栏/index.html')
 </script>
 </body>
 ```
+````
 
 > `dist/{ProjectName}/` 是 `pnpm watch` 的编译输出路径。端口号按实际使用的服务器端口调整。
 
@@ -168,15 +170,17 @@ pnpm build
 
 ### 7. 更新占位符
 
-部署完成后，修改项目中的 `正则/状态栏界面.html`：
+部署完成后，修改项目中的 `正则/状态栏界面.html`（同样需保留首尾的代码块标记）：
 
-```html
+````
+```
 <body>
 <script>
 $('body').load('https://testingcf.jsdelivr.net/gh/{GH_USER}/{GH_REPO}/dist/{ProjectName}/界面/状态栏/index.html')
 </script>
 </body>
 ```
+````
 
 替换：
 - `{GH_USER}`：GitHub 用户名
