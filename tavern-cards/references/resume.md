@@ -10,10 +10,9 @@
    - 不存在 → 提示该项目缺少 `design-spec.md`，可能尚未走 tavern-design，也可能属于旧项目；按下方「无 `design-spec.md` 时的处理」继续
 3. **读取编写规划文档**（`创作规划.yaml`）
 4. **批量查询进度**：用命令一次性获取所有已注册条目的摘要和状态
-5. **对比规划与注册**：将 entryManifest 中已有条目与 `创作规划.yaml` 对比，确定未完成条目
-6. **内容一致性检查**：对比 `创作规划.yaml` 中 characters/world/entries 的描述与已注册条目的实际内容。发现不一致时，询问用户以哪边为准，再更新规划文档或条目内容
-7. **向用户展示进度概要**，确认从哪个部分/条目继续
-8. **继续创作流程**
+5. **对比规划与注册**：将 entryManifest 中已有条目与 `创作规划.yaml` 对比，确定未完成条目；内容不一致时询问用户以哪边为准，再更新规划或条目。变量与额外要求一并核对，依据见 `references/mvu/schema.md` 与 `references/requirements/planning-yaml.md`
+6. **向用户展示进度概要**，确认从哪个部分/条目继续
+7. **继续创作流程**
 
 ## 使用 forge CLI
 
@@ -113,7 +112,7 @@ node scripts/tavern-cards-forge.mjs query {project} '$.entryManifest[*][*].abstr
 
 - 有编写规划文档但条目未全部注册 → 读取 `references/composition.md`，按 `entries` 顺序从首个未注册条目继续创作
 - 条目已全部注册但 MVU 未完成（`mvu: true` 时）→ 读取 `references/mvu/guide.md`，从缺失的核心文件继续
-- MVU 完成但 EJS 未完成 → 读取 `references/ejs/guide.md`，检查所有 EJS 条目的 @@if 条件与段落控制是否以 getvar('stat_data.xxx',{defaults}) 读取变量、MVU 路径是否带 stat_data. 前缀，补全未处理条目
+- MVU 完成但 EJS 未完成 → 读取 `references/ejs/guide.md`，补全未处理的 EJS 条目
 - EJS 完成但未运行 configure → 执行 `node scripts/tavern-cards-forge.mjs configure {project}`
 - configure 完成但无开场白（`form: charactercard` 时）→ 读取 `references/contents-creation/first-message.md`
 - 以上均完成 → 执行 `node scripts/tavern-cards-forge.mjs pack {project}` 打包输出

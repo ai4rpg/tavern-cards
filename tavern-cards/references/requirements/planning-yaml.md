@@ -83,11 +83,16 @@ characters:
     function: 提供修仙界信息
     appearance: [总是穿深灰色西装，袖口沾粉笔灰]  # 可选
 
-style:
+style:                         # 正文写作风格，包括开场白，不影响世界书条目
   perspective: 第三人称
   tone: 口语化、轻松
   mood: 温馨
   reference: 参考村上春树的文风  # 可选
+
+requirements:                    # 可选段落：只记没有其它落点的要求
+  - id: R1
+    text: 状态栏的好感度等信息默认隐藏，但允许玩家点击按钮显示  # 用户原话
+    kind: must                   # must（必须做到）/ must_not（禁止）/ prefer（倾向，冲突可让步）
 
 entries:                         # 数组顺序即创作顺序，项目级事实来源
   - name: 世界设定               # 必填：entryManifest 中的条目名
@@ -96,6 +101,11 @@ entries:                         # 数组顺序即创作顺序，项目级事实
   - name: 华东区
     type: 地理
     path: 世界书/地理/华东区.yaml
+  - name: 扮演准则
+    type: 扮演准则
+    path: 世界书/扮演准则/扮演准则.yaml
+    purpose: 叙述风格与内容边界
+    note: 不正面描写人物死亡
   - name: 阶段指导
     type: 阶段指导
     path: 世界书/阶段指导/阶段指导.yaml
@@ -109,6 +119,26 @@ entries:                         # 数组顺序即创作顺序，项目级事实
     purpose: 苏云的基础档案       # 可选：给创作阶段用
     source_chapters: [第1章, 第5章] # 可选：转化项目
     keywords: [苏云, 小云]        # 可选：缺省时按 conventions 建议推导
+  - name: 苏云_性格调色盘
+    type: 角色
+    path: 世界书/角色/苏云/性格调色盘.yaml
+    part: personality
+    note: 冷静不是没有感情，偶尔泄露苏云的情绪作为点缀   # 可选：用户对这条的要求，记原话
+  - name: 季清寒_基础信息
+    type: 角色
+    path: 世界书/角色/季清寒/基础信息.yaml
+    part: basic
+  - name: 季清寒_性格调色盘
+    type: 角色
+    path: 世界书/角色/季清寒/性格调色盘.yaml
+    part: personality
+  - name: 季清寒_三面性
+    type: 角色
+    path: 世界书/角色/季清寒/三面性.yaml
+    part: tri_faceted
+  - name: 王老师
+    type: NPC
+    path: 世界书/NPC/王老师.yaml
 
 mvu:                             # 可选段落，project.mvu=true 时出现
   structure: |
@@ -117,14 +147,15 @@ mvu:                             # 可选段落，project.mvu=true 时出现
     │   ├── 当前时间
     │   ├── 当前区域
     │   ├── 天气与灵气浓度
-    │   └── 近期事务
+    │   └── 近期事务：${事务名}
     ├── 苏云
     │   ├── 好感度
     │   ├── 信任度
     │   └── 任务进度
     └── 主角
         ├── 灵力值
-        └── 物品栏
+        ├── 物品栏：${物品名}
+        └── 能力面板：${力量|敏捷|体质}
   variables:                     # 待细化：粗略规划时可省略或只写粗略结构
     # type 字段默认 string，可省略；需要其他类型时显式声明
     # ── 世界 ──
@@ -139,8 +170,9 @@ mvu:                             # 可选段落，project.mvu=true 时出现
         weather: string          # 晴/阴/雨
         spiritual_density: number # 0-1，灵气浓度
     - path: 世界.近期事务
-      type: z.array
-      description: 进行中的主线事件标记
+      type: z.record
+      format: "${事务名}: ${当前状态}"
+      description: 进行中的主线事件
     # ── 苏云 ──
     - path: 苏云.好感度
       type: number
@@ -160,6 +192,13 @@ mvu:                             # 可选段落，project.mvu=true 时出现
       description: 当前可用灵力
     - path: 主角.物品栏
       type: z.record
+      format: "${物品名}: {数量: number, 描述: string}"
+      description: 随身物品不设上限，避免静默丢失
+      check: 获得新物品时新增；用完或丢弃时删除
+    - path: 主角.能力面板
+      type: z.record
+      format: "${力量|敏捷|体质}: number"
+      description: 三项基础属性，数值 0~100
 
 ejs:                             # 可选段落，有 EJS 需求时出现
   entries:
@@ -186,6 +225,7 @@ first_messages:                  # 可选段落，角色卡时出现；数组顺
     opening_situation: |         # 待细化：粗略规划时可省略
       苏云收到协会指令，前往华东分部报到时，在门口遇见<user>。
       她没想到这次任务的搭档竟是个看起来完全不像修仙者的人。
+    note: 苏云先开口，别让<user>先说话   # 可选：用户对这条开场白的要求，记原话
   - format: 叙事式
     word_count: 300~500
     output_path: 开场白/1.txt    # 额外开场白路径
@@ -195,3 +235,28 @@ first_messages:                  # 可选段落，角色卡时出现；数组顺
       她脱掉了协会制服，看起来比平时放松，但眼神里仍带着某种试探。
     initvar_override: 开场白/initvar/1.yaml  # 可选；该开场白需要不同的初始变量时填写
 ```
+
+## 额外要求
+
+`requirements` 是兜底：用户的要求先在创作规划里找落点——单条条目的写进 `entries[].note`，设定的写进 `world` / `characters`，单个变量写进 `variables` 对应行，单段开场白写进 `first_messages[].note`。跨条目的要求，以及界面、打包这类没有字段可挂的约束，才记一行。设计稿的「硬性边界」「待定项」同样先找落点。
+
+`text` 只记用户在对话里说过的原话，不改写、不补充。原话不足以执行时（不知道落在哪个产物、什么算做到），追问用户，把回答追加进 `text`。
+
+## 变量形态
+
+| 字段 | 用途 |
+|---|---|
+| `path` | 变量路径，点号分段。只有要穿过上层开放记录时才写 `${名}`，如 `世界.势力.${势力名}.成员` |
+| `type` | `string`（默认）/ `number` / `boolean` / `object`（配 `fields`）/ `z.record` / `z.array` |
+| `format` | `string`：值必须满足的格式；`z.record`：一条记录的模板，写成 `${键}: ${值}`；`z.array`：一个元素的模板，缺省按 `string` |
+| `enum` | 闭集取值，列全所有值，如 `[待命, 调查中, 对峙, 结案]` |
+| `fields` | `type: object` 时的字段表，字段名 → 类型 |
+| `range` | 数值范围，如 `0~100` |
+| `description` | 这个变量是什么 |
+| `check` | 更新规则的草稿：什么时候更新、更新成什么；变量更新规则阶段据此展开 |
+| `cap` | 仅开放记录（键位写 `${名}`）：这一层容器的键数上限；超限静默丢弃最旧的键，通常不设，仅当用户明确要求时写 |
+
+1. 键位写 `${名1|名2|…}`：键是这几个固定值，值结构相同，写一遍即可；结构不同就分开写。固定键默认必填，某个键可以不存在时在 `description` 里注明。
+2. 值位写 `${描述}` 表示字符串，写 `{字段: 类型, ...}` 表示对象，也可以直接写 `number`、`boolean`。
+3. 集合优先用 `z.record`；顺序有意义、且不需要按键增删时用 `z.array`。
+4. `cap` 只约束这一行的记录；嵌套记录的父层要单独写一行。

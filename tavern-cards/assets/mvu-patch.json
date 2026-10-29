@@ -30,7 +30,8 @@
         "path": "世界书/变量/initvar.yaml",
         "part": "initvar",
         "abstract": "MVU初始变量",
-        "keywords": []
+        "keywords": [],
+        "enabled": false
       }
     }
   },

@@ -11,6 +11,7 @@
    - **表单式**：开场白写入自定义占位符（叙事+表单组合的叙事部分调 `first-message-agent`），表单前端界面留到步骤 10
 3. 检查与保存：
    - 确认文件已写入 `output_path`
+   - 运行 `node scripts/mechanical-check.mjs {file}`，不通过就地修正；断句项命中「例外」（台词、紧张场景）时可保留，在自检记录里写明理由
    - 调用 `check-agent` 检查正文
 4. 所有项完成后，按顺序注册到 state 的 `first_messages`
 
@@ -174,6 +175,7 @@ node scripts/tavern-cards-forge.mjs patch {project} '[{"op": "add", "path": "/fi
 
 通用：
 - [ ] 已调用 check-agent 检查
+- [ ] 符合 `note` 的用户要求
 - [ ] 注册到 `first_messages`
 - [ ] state 中 `first_messages` 顺序与创作规划一致
 - [ ] 说明式开场白：仅玩法复杂或用户要求时使用，其后必有真实的叙事或大纲开场白，已保存为 `.md` 后缀

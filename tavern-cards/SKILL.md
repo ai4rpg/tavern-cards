@@ -91,6 +91,7 @@ description: "创建、编辑、评估 SillyTavern 角色卡和世界书（角�
 脚本工具均位于本 skill 的 `scripts/` 目录下。
 
 - **tavern-cards-forge**：离线打包/解包/配置工具，完整命令用法与数据模型见 `references/manual.md`。
+- **mechanical-check**：条目或开场白落盘后的机械自检，检查破折号、模糊词、否定转折、极端程度词、元叙事标记、`{{user}}` 宏，以及断句（短尾比例、单句分句数上限）。用法见 `references/composition.md` 步骤 7。
 
 ## 参考资料
 

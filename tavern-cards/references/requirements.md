@@ -26,6 +26,7 @@
 | world.* | 全部必填 | 全部必填 |
 | characters.* | 全部必填 | 全部必填 |
 | style.* | 全部必填 | 全部必填 |
+| requirements | 用户要求没落点才写，写了就全部必填 | 同左 |
 | entries | 全部必填 | 全部必填 |
 | mvu | 只需 structure，可粗略 | structure + variables 完整 |
 | ejs | 只填 entries | entries 完整（含 condition 中的 stat_data 路径） |
@@ -58,13 +59,14 @@ variables:                    # 待细化：取值范围和格式约束待创作
 
 完整结构和示例见 `references/requirements/planning-yaml.md`。
 
-产出此文档后，**必须暂停并等待用户确认**。确认内容包括：
+产出此文档后，逐项核对以下内容并说明：
 - 条目类型和数量是否覆盖需求
 - 字符名、地名等关键名称是否正确（尤其检查繁体字/日文汉字）
 - 条目顺序是否符合预期
+- 用户要求是否都有落点（`entries[].note`、`world` / `characters`、`variables` 对应行、`first_messages[].note`），`requirements` 只留没有其它落点的；`text` 是用户原话（不是你的转述），`must_not` 是否与其它规划冲突
 - MVU/EJS 规划是否满足动态需求
 
-用户确认后，按 `entries` 数组顺序依次进行条目创作（`references/composition.md`）。
+核对无误后，**必须暂停并等待用户确认**。用户确认后，按 `entries` 数组顺序依次进行条目创作（`references/composition.md`）。
 
 ## 参考
 

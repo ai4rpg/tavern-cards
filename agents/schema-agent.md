@@ -50,6 +50,9 @@ description: "编写 MVU 变量结构 schema.ts。读取创作规划的 mvu 段�
 - [ ] `export const Schema` 和 `export type Schema = z.output<typeof Schema>;` 两行都存在
 - [ ] 同一 `z.object` 内无重复字段键
 - [ ] 顶部无 `import` 语句
+- [ ] 每个 `type: z.record` 的行都按 `format` 编译：键位 `${名}` → `z.record(z.string().describe('名'), 值)`，键位 `${名1|名2}` → `z.record(z.enum([...]), 值)`（`description` 注明某个键可缺省时用 `z.partialRecord`），值位 `{字段: 类型}` → `z.object`
+- [ ] `type: z.array` 的行按 `format` 编译元素类型，产出 `z.array(元素类型)`；`format` 缺省时元素为 `z.string()`
+- [ ] 规划写了 `cap` 的开放记录按 `cap` 截断，超限时静默丢弃最旧的键；规划没写的没有自行加限制
 - [ ] 已按 `references/mvu/zod-rule.yaml` 全部规则核对
 
 ## 参考文档
